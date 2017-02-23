@@ -1,12 +1,12 @@
+from CacheServer import CacheServer
+
+
 class Endpoint:
     def __init__(self, data_center_latency_, data_center_, cache_servers_=[]):
         self.data_center_latency = data_center_latency_
         self.data_center = data_center_
         self._cache_servers = cache_servers_
         self._videos = []
-
-        self.__sort_cache_servers()
-        self.sort_videos()
 
     def __sort_cache_servers(self):
         self._cache_servers.sort(key=lambda x: x[1] / self.data_center.memory_per_cache_server)
@@ -17,24 +17,21 @@ class Endpoint:
     def sort_videos(self):
         self._videos.sort(key=lambda x: x[2] / x[0])
 
-    def knapsack(self, items, weight):
-        items = list(enumerate(items))
-        sorted_items = sorted(items, key=lambda arr: arr[1][1] / arr[1][0])
-        result_items = []
-        current_weight = 0
-        total_value = 0
-        print(sorted_items)
-        weight_threshold = weight # * lerp(0.6, 0.9, len(items) / 200)
+    def knapsack(self):
 
-        for i in range(len(sorted_items)):
-            print(result_items, current_weight, total_value)
-            weight_diff = weight - current_weight
-            if current_weight < weight_threshold:
-                if weight_diff > sorted_items[i][1][1]:
-                    result_items.append(sorted_items[i][0])
-                    current_weight += sorted_items[i][1][1]
-                    total_value += sorted_items[i][1][0]
+        # [(0, 100), (2, 200), (1, 200)]
+        for i in range(len(self._cache_servers)):
+            cache_server = CacheServer(self.data_center_latency, self._cache_servers[i][1])
+            cache_server_memory_left = self.data_center.memory_per_cache_server
+            self.data_center.add_cache_server(cache_server)
 
-        # brut = brut_knapsack(sorted_items[end_index:], weight - current_weight)
+            for j in range(len(self._videos)):
+                if self._videos[j] is not None and self._videos[j][2] <= cache_server_memory_left:
+                    cache_server_memory_left -= self._videos[j][2]
+                    cache_server.cash_video(self._videos[j])
+                    self._videos[j] = None
 
-        return total_value, result_items
+    def estimate_for_point(self):
+        self.__sort_cache_servers()
+        self.sort_videos()
+        self.knapsack()
